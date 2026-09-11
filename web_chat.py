@@ -162,6 +162,34 @@ def diag():
     except Exception as e:
         result["https_request"] = f"FAILED: {type(e).__name__}: {e}"
 
+    # openai SDK dùng httpx2 nội bộ — test riêng để cô lập xem lỗi nằm ở
+    # tầng mạng (đã loại ở trên), ở httpx2, hay ở chính client OpenAI.
+    try:
+        import httpx2
+
+        result["httpx2_version"] = httpx2.__version__
+        r = httpx2.get(
+            f"https://{host}/v1/models",
+            headers={"Authorization": f"Bearer {key}"},
+            timeout=10,
+        )
+        result["httpx2_request"] = f"HTTP {r.status_code}"
+    except Exception as e:
+        result["httpx2_request"] = f"FAILED: {type(e).__name__}: {e}"
+
+    try:
+        from openai import OpenAI
+
+        client = OpenAI(api_key=key, base_url=os.getenv("OPENAI_BASE_URL"))
+        resp = client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=[{"role": "user", "content": "ping"}],
+            max_tokens=5,
+        )
+        result["openai_sdk_call"] = f"OK: {resp.choices[0].message.content!r}"
+    except Exception as e:
+        result["openai_sdk_call"] = f"FAILED: {type(e).__name__}: {e}"
+
     return jsonify(result)
 
 
