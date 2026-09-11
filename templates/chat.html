@@ -4,224 +4,423 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Trợ Lý CLI — Web UI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #f5f5f7;
+    --bg: #eef1f6;
     --panel: #ffffff;
-    --border: #e2e2e6;
-    --text: #1c1c1e;
-    --muted: #6b6b70;
-    --accent: #2f6fed;
-    --accent-soft: #eaf1ff;
-    --assistant-bubble: #f0f0f2;
+    --panel-2: #f7f8fb;
+    --border: #e4e7ee;
+    --text: #1a1d23;
+    --muted: #767c8a;
+    --accent: #5b6bf5;
+    --accent-2: #7c8cff;
+    --accent-soft: #eef0ff;
+    --user-bubble-from: #5b6bf5;
+    --user-bubble-to: #7c8cff;
+    --assistant-bubble: #f2f3f7;
+    --danger-bg: #fdeceb;
+    --danger-text: #c4392f;
+    --danger-border: #f6cdc8;
+    --shadow: 0 12px 32px rgba(30, 41, 82, 0.08);
+    --shadow-sm: 0 2px 8px rgba(30, 41, 82, 0.06);
   }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1117;
+      --panel: #171a23;
+      --panel-2: #1d212c;
+      --border: #2a2f3d;
+      --text: #eef0f6;
+      --muted: #9198ab;
+      --accent: #7c8cff;
+      --accent-2: #939fff;
+      --accent-soft: #232849;
+      --user-bubble-from: #5b6bf5;
+      --user-bubble-to: #7c8cff;
+      --assistant-bubble: #262b38;
+      --danger-bg: #3a1f1f;
+      --danger-text: #ff9d92;
+      --danger-border: #5a2d2a;
+      --shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
+    }
+  }
+
   * { box-sizing: border-box; }
+
   body {
     margin: 0;
-    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg);
+    font-family: "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
+    background:
+      radial-gradient(1200px 600px at 15% -10%, var(--accent-soft), transparent 60%),
+      var(--bg);
     color: var(--text);
     display: flex;
     justify-content: center;
     min-height: 100vh;
-    padding: 24px 16px;
+    padding: 28px 16px;
   }
+
   .app {
     width: 100%;
-    max-width: 720px;
+    max-width: 760px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 14px;
   }
+
   header {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 8px;
+    gap: 12px;
   }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .brand-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--user-bubble-from), var(--user-bubble-to));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    box-shadow: var(--shadow-sm);
+    flex-shrink: 0;
+  }
+
   header h1 {
-    font-size: 1.25rem;
+    font-size: 1.15rem;
+    font-weight: 700;
     margin: 0;
+    letter-spacing: -0.01em;
   }
+
   header p {
-    margin: 0;
+    margin: 2px 0 0;
     color: var(--muted);
-    font-size: 0.85rem;
+    font-size: 0.8rem;
   }
-  .persona-box {
+
+  button.reset {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 9px 14px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    transition: transform 0.12s ease, border-color 0.12s ease;
+  }
+  button.reset:hover { border-color: var(--accent); }
+  button.reset:active { transform: scale(0.97); }
+
+  details.persona-box {
     background: var(--panel);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 10px 14px;
+    border-radius: 14px;
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
   }
-  .persona-box label {
-    display: block;
-    font-size: 0.75rem;
+  details.persona-box summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.82rem;
+    font-weight: 600;
     color: var(--muted);
-    margin-bottom: 4px;
+  }
+  details.persona-box summary::-webkit-details-marker { display: none; }
+  details.persona-box summary::after {
+    content: "⌄";
+    font-size: 1rem;
+    transition: transform 0.15s ease;
+  }
+  details.persona-box[open] summary::after { transform: rotate(180deg); }
+  details.persona-box summary .label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
   .persona-box textarea {
     width: 100%;
     border: none;
+    border-top: 1px solid var(--border);
     resize: none;
     font-family: inherit;
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     color: var(--text);
-    background: transparent;
+    background: var(--panel-2);
     outline: none;
-    min-height: 40px;
+    min-height: 52px;
+    padding: 12px 16px;
   }
+
   .chat-panel {
     background: var(--panel);
     border: 1px solid var(--border);
-    border-radius: 16px;
+    border-radius: 20px;
+    box-shadow: var(--shadow);
     flex: 1;
-    min-height: 420px;
+    min-height: 440px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
   }
+
   .messages {
     flex: 1;
     overflow-y: auto;
-    padding: 16px;
+    padding: 20px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 14px;
+    scroll-behavior: smooth;
   }
+  .messages::-webkit-scrollbar { width: 8px; }
+  .messages::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 8px;
+  }
+
+  .row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    max-width: 88%;
+  }
+  .row.user { align-self: flex-end; flex-direction: row-reverse; }
+  .row.assistant { align-self: flex-start; }
+
+  .avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+  }
+  .row.user .avatar {
+    background: linear-gradient(135deg, var(--user-bubble-from), var(--user-bubble-to));
+  }
+  .row.assistant .avatar {
+    background: var(--accent-soft);
+  }
+
   .bubble {
-    max-width: 80%;
-    padding: 10px 14px;
-    border-radius: 14px;
-    line-height: 1.45;
+    padding: 11px 15px;
+    border-radius: 16px;
+    line-height: 1.5;
     font-size: 0.92rem;
     white-space: pre-wrap;
     word-wrap: break-word;
+    box-shadow: var(--shadow-sm);
   }
-  .bubble.user {
-    align-self: flex-end;
-    background: var(--accent);
+  .row.user .bubble {
+    background: linear-gradient(135deg, var(--user-bubble-from), var(--user-bubble-to));
     color: white;
-    border-bottom-right-radius: 4px;
+    border-bottom-right-radius: 5px;
   }
-  .bubble.assistant {
-    align-self: flex-start;
+  .row.assistant .bubble {
     background: var(--assistant-bubble);
     color: var(--text);
-    border-bottom-left-radius: 4px;
+    border-bottom-left-radius: 5px;
   }
-  .bubble.assistant.pending::after {
+  .row.assistant .bubble.pending::after {
     content: "▍";
     animation: blink 1s step-start infinite;
+    color: var(--accent);
   }
   @keyframes blink { 50% { opacity: 0; } }
+
+  .typing-dots {
+    display: inline-flex;
+    gap: 4px;
+    padding: 4px 0;
+  }
+  .typing-dots span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    animation: dot 1.2s infinite ease-in-out;
+  }
+  .typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes dot {
+    0%, 60%, 100% { opacity: 0.25; transform: translateY(0); }
+    30% { opacity: 1; transform: translateY(-3px); }
+  }
+
   .empty-hint {
     margin: auto;
     color: var(--muted);
     font-size: 0.85rem;
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
   }
+  .empty-hint .big-icon { font-size: 2rem; }
+
   form.composer {
     display: flex;
-    gap: 8px;
-    padding: 12px;
+    gap: 10px;
+    padding: 14px;
     border-top: 1px solid var(--border);
+    background: var(--panel-2);
   }
   form.composer textarea {
     flex: 1;
     resize: none;
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 12px;
+    background: var(--panel);
+    color: var(--text);
+    border-radius: 14px;
+    padding: 12px 16px;
     font-family: inherit;
     font-size: 0.92rem;
     outline: none;
-    min-height: 42px;
+    min-height: 46px;
     max-height: 120px;
+    transition: border-color 0.12s ease, box-shadow 0.12s ease;
   }
-  form.composer textarea:focus { border-color: var(--accent); }
-  button {
-    border: none;
-    border-radius: 10px;
-    padding: 0 18px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
+  form.composer textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
   }
   button.send {
-    background: var(--accent);
+    border: none;
+    border-radius: 14px;
+    width: 48px;
+    height: 46px;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, var(--user-bubble-from), var(--user-bubble-to));
     color: white;
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.12s ease, opacity 0.12s ease;
   }
+  button.send:hover { transform: translateY(-1px); }
+  button.send:active { transform: scale(0.95); }
   button.send:disabled {
-    background: #a9c2f5;
+    opacity: 0.5;
     cursor: not-allowed;
+    transform: none;
   }
-  button.reset {
-    background: var(--accent-soft);
-    color: var(--accent);
-    font-size: 0.8rem;
-    padding: 6px 12px;
-  }
+
   footer.stats {
     display: flex;
-    gap: 16px;
+    gap: 10px;
     flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
-    font-size: 0.78rem;
+    font-size: 0.76rem;
     color: var(--muted);
-    padding: 4px 4px;
+    padding: 2px 6px;
   }
-  footer.stats .values {
+  .stat-pills {
     display: flex;
-    gap: 14px;
+    gap: 8px;
     flex-wrap: wrap;
   }
+  .stat-pill {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 5px 12px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    box-shadow: var(--shadow-sm);
+  }
+  .stat-pill strong { color: var(--text); font-weight: 700; }
+
   .error-banner {
-    background: #fdeaea;
-    color: #b3261e;
-    border: 1px solid #f3c6c4;
-    border-radius: 10px;
-    padding: 8px 12px;
+    background: var(--danger-bg);
+    color: var(--danger-text);
+    border: 1px solid var(--danger-border);
+    border-radius: 12px;
+    padding: 10px 14px;
     font-size: 0.85rem;
     display: none;
+    align-items: center;
+    gap: 8px;
+  }
+
+  @media (max-width: 480px) {
+    body { padding: 16px 10px; }
+    .row { max-width: 94%; }
+    header h1 { font-size: 1.05rem; }
   }
 </style>
 </head>
 <body>
 <div class="app">
   <header>
-    <div>
-      <h1>🤖 Trợ Lý CLI — Web UI</h1>
-      <p>Giao diện web cho streaming_chatbot / run_assistant (template.py)</p>
+    <div class="brand">
+      <div class="brand-icon">🤖</div>
+      <div>
+        <h1>Trợ Lý CLI</h1>
+        <p>Web UI cho streaming chatbot (template.py)</p>
+      </div>
     </div>
-    <button class="reset" id="resetBtn" type="button">Đặt lại phiên</button>
+    <button class="reset" id="resetBtn" type="button">↺ Đặt lại</button>
   </header>
 
-  <div class="persona-box">
-    <label for="persona">System prompt (persona) — áp dụng từ tin nhắn tiếp theo</label>
+  <details class="persona-box">
+    <summary>
+      <span class="label">⚙️ System prompt (persona)</span>
+    </summary>
     <textarea id="persona" rows="2">{{ default_persona }}</textarea>
-  </div>
+  </details>
 
-  <div class="error-banner" id="errorBanner"></div>
+  <div class="error-banner" id="errorBanner">⚠️ <span id="errorText"></span></div>
 
   <div class="chat-panel">
     <div class="messages" id="messages">
-      <div class="empty-hint">Gõ tin nhắn bên dưới để bắt đầu trò chuyện.</div>
+      <div class="empty-hint">
+        <span class="big-icon">💬</span>
+        <span>Gõ tin nhắn bên dưới để bắt đầu trò chuyện.</span>
+      </div>
     </div>
     <form class="composer" id="composer">
       <textarea id="input" placeholder="Nhập tin nhắn... (Enter để gửi, Shift+Enter xuống dòng)" rows="1"></textarea>
-      <button class="send" id="sendBtn" type="submit">Gửi</button>
+      <button class="send" id="sendBtn" type="submit" aria-label="Gửi">➤</button>
     </form>
   </div>
 
   <footer class="stats">
-    <span>Lịch sử tối đa 3 lượt gần nhất (6 message)</span>
-    <div class="values">
-      <span>Lượt: <strong id="statTurns">0</strong></span>
-      <span>Token: <strong id="statTokens">0</strong></span>
-      <span>Chi phí: <strong id="statCost">$0.000000</strong></span>
+    <span>Lịch sử tối đa 3 lượt gần nhất</span>
+    <div class="stat-pills">
+      <span class="stat-pill">🔁 <strong id="statTurns">0</strong></span>
+      <span class="stat-pill">🔤 <strong id="statTokens">0</strong></span>
+      <span class="stat-pill">💵 <strong id="statCost">$0.000000</strong></span>
     </div>
   </footer>
 </div>
@@ -234,25 +433,36 @@ const sendBtn = document.getElementById("sendBtn");
 const personaEl = document.getElementById("persona");
 const resetBtn = document.getElementById("resetBtn");
 const errorBanner = document.getElementById("errorBanner");
+const errorText = document.getElementById("errorText");
 
 function clearEmptyHint() {
   const hint = messagesEl.querySelector(".empty-hint");
   if (hint) hint.remove();
 }
 
-function addBubble(role, text) {
+function addRow(role, text) {
   clearEmptyHint();
-  const div = document.createElement("div");
-  div.className = "bubble " + role;
-  div.textContent = text;
-  messagesEl.appendChild(div);
+  const row = document.createElement("div");
+  row.className = "row " + role;
+
+  const avatar = document.createElement("div");
+  avatar.className = "avatar";
+  avatar.textContent = role === "user" ? "🧑" : "🤖";
+
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  bubble.textContent = text;
+
+  row.appendChild(avatar);
+  row.appendChild(bubble);
+  messagesEl.appendChild(row);
   messagesEl.scrollTop = messagesEl.scrollHeight;
-  return div;
+  return bubble;
 }
 
 function showError(msg) {
-  errorBanner.textContent = msg;
-  errorBanner.style.display = "block";
+  errorText.textContent = msg;
+  errorBanner.style.display = "flex";
 }
 
 function hideError() {
@@ -272,9 +482,10 @@ async function refreshStats() {
 }
 
 async function sendMessage(text) {
-  addBubble("user", text);
-  const assistantBubble = addBubble("assistant", "");
+  addRow("user", text);
+  const assistantBubble = addRow("assistant", "");
   assistantBubble.classList.add("pending");
+  assistantBubble.innerHTML = '<span class="typing-dots"><span></span><span></span><span></span></span>';
 
   sendBtn.disabled = true;
   hideError();
@@ -294,14 +505,20 @@ async function sendMessage(text) {
     const reader = res.body.getReader();
     const decoder = new TextDecoder("utf-8");
     let full = "";
+    let firstChunk = true;
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
+      if (firstChunk) {
+        assistantBubble.innerHTML = "";
+        firstChunk = false;
+      }
       full += decoder.decode(value, { stream: true });
       assistantBubble.textContent = full;
       messagesEl.scrollTop = messagesEl.scrollHeight;
     }
   } catch (err) {
+    assistantBubble.innerHTML = "";
     showError("Không gọi được API: " + err.message);
   } finally {
     assistantBubble.classList.remove("pending");
@@ -333,7 +550,11 @@ inputEl.addEventListener("input", () => {
 
 resetBtn.addEventListener("click", async () => {
   await fetch("/api/reset", { method: "POST" });
-  messagesEl.innerHTML = '<div class="empty-hint">Gõ tin nhắn bên dưới để bắt đầu trò chuyện.</div>';
+  messagesEl.innerHTML = `
+    <div class="empty-hint">
+      <span class="big-icon">💬</span>
+      <span>Gõ tin nhắn bên dưới để bắt đầu trò chuyện.</span>
+    </div>`;
   hideError();
   refreshStats();
 });
