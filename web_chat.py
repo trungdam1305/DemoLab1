@@ -14,6 +14,7 @@ Rồi mở http://127.0.0.1:5000 trên trình duyệt.
 import os
 import secrets
 import socket
+import time
 
 from flask import Flask, Response, jsonify, render_template, request, session
 
@@ -22,6 +23,7 @@ from template import OPENAI_MODEL, count_tokens, estimate_cost, retry_with_backo
 DEFAULT_PERSONA = (
     "Bạn là trợ giảng thân thiện của khóa AI, trả lời ngắn gọn bằng tiếng Việt."
 )
+NEW_CHAT_TITLE = "Đoạn chat mới"
 
 # Danh sách model cho dropdown lựa chọn trên UI. "id" phải khớp đúng tên
 # model thật của nhà cung cấp (OpenAI hoặc endpoint tương thích qua
@@ -38,22 +40,63 @@ AVAILABLE_MODELS = [
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
 
-# session_id -> {"history": [...], "num_turns": int, "total_tokens": int, "total_cost": float}
+# session_id -> {
+#     "conversations": {conv_id: {title, persona, model, history, num_turns,
+#                                  total_tokens, total_cost, updated_at}},
+#     "active_id": conv_id,
+# }
 SESSIONS: dict[str, dict] = {}
 
 
-def _get_state() -> dict:
+def _new_conversation(persona: str | None = None, model: str | None = None) -> dict:
+    return {
+        "title": NEW_CHAT_TITLE,
+        "persona": persona or DEFAULT_PERSONA,
+        "model": model or OPENAI_MODEL,
+        "history": [],
+        "num_turns": 0,
+        "total_tokens": 0,
+        "total_cost": 0.0,
+        "updated_at": time.time(),
+    }
+
+
+def _get_user_state() -> dict:
     if "sid" not in session:
         session["sid"] = secrets.token_hex(8)
     sid = session["sid"]
     if sid not in SESSIONS:
+        conv_id = secrets.token_hex(6)
         SESSIONS[sid] = {
-            "history": [],
-            "num_turns": 0,
-            "total_tokens": 0,
-            "total_cost": 0.0,
+            "conversations": {conv_id: _new_conversation()},
+            "active_id": conv_id,
         }
     return SESSIONS[sid]
+
+
+def _get_conversation(user_state: dict, conv_id: str | None = None) -> tuple[str, dict]:
+    """Trả về (conv_id, conversation) — dùng conv_id nếu hợp lệ, không thì
+    dùng đoạn chat đang active; tự tạo mới nếu không còn đoạn nào."""
+    conversations = user_state["conversations"]
+    if conv_id and conv_id in conversations:
+        user_state["active_id"] = conv_id
+        return conv_id, conversations[conv_id]
+
+    active_id = user_state.get("active_id")
+    if active_id not in conversations:
+        active_id = secrets.token_hex(6)
+        conversations[active_id] = _new_conversation()
+        user_state["active_id"] = active_id
+    return active_id, conversations[active_id]
+
+
+def _conversation_summary(conv_id: str, conv: dict) -> dict:
+    return {
+        "id": conv_id,
+        "title": conv["title"],
+        "num_turns": conv["num_turns"],
+        "updated_at": conv["updated_at"],
+    }
 
 
 @app.route("/")
@@ -66,23 +109,85 @@ def index():
     )
 
 
+@app.route("/api/conversations", methods=["GET"])
+def list_conversations():
+    user_state = _get_user_state()
+    convs = [
+        _conversation_summary(cid, c) for cid, c in user_state["conversations"].items()
+    ]
+    convs.sort(key=lambda c: c["updated_at"], reverse=True)
+    return jsonify({"conversations": convs, "active_id": user_state["active_id"]})
+
+
+@app.route("/api/conversations", methods=["POST"])
+def create_conversation():
+    data = request.get_json(force=True) or {}
+    user_state = _get_user_state()
+    conv_id = secrets.token_hex(6)
+    user_state["conversations"][conv_id] = _new_conversation(
+        persona=data.get("persona"), model=data.get("model")
+    )
+    user_state["active_id"] = conv_id
+    return jsonify({"id": conv_id})
+
+
+@app.route("/api/conversations/<conv_id>", methods=["GET"])
+def get_conversation(conv_id):
+    user_state = _get_user_state()
+    conv = user_state["conversations"].get(conv_id)
+    if not conv:
+        return jsonify({"error": "Không tìm thấy đoạn chat"}), 404
+    user_state["active_id"] = conv_id
+    return jsonify(
+        {
+            "id": conv_id,
+            "title": conv["title"],
+            "persona": conv["persona"],
+            "model": conv["model"],
+            "history": conv["history"],
+            "num_turns": conv["num_turns"],
+            "total_tokens": conv["total_tokens"],
+            "total_cost": conv["total_cost"],
+        }
+    )
+
+
+@app.route("/api/conversations/<conv_id>", methods=["DELETE"])
+def delete_conversation(conv_id):
+    user_state = _get_user_state()
+    user_state["conversations"].pop(conv_id, None)
+
+    if not user_state["conversations"]:
+        new_id = secrets.token_hex(6)
+        user_state["conversations"][new_id] = _new_conversation()
+        user_state["active_id"] = new_id
+    elif user_state["active_id"] == conv_id:
+        user_state["active_id"] = next(iter(user_state["conversations"]))
+
+    return jsonify({"ok": True, "active_id": user_state["active_id"]})
+
+
 @app.route("/api/chat", methods=["POST"])
 def chat():
     data = request.get_json(force=True) or {}
     user_msg = (data.get("message") or "").strip()
-    persona = (data.get("persona") or DEFAULT_PERSONA).strip()
-    model = (data.get("model") or OPENAI_MODEL).strip()
     if not user_msg:
         return jsonify({"error": "Tin nhắn rỗng"}), 400
 
-    state = _get_state()
+    user_state = _get_user_state()
+    conv_id, conv = _get_conversation(user_state, data.get("conversation_id"))
+
+    persona = (data.get("persona") or conv["persona"] or DEFAULT_PERSONA).strip()
+    model = (data.get("model") or conv["model"] or OPENAI_MODEL).strip()
+    conv["persona"] = persona
+    conv["model"] = model
 
     from openai import OpenAI
 
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     messages = (
         [{"role": "system", "content": persona}]
-        + state["history"]
+        + conv["history"]
         + [{"role": "user", "content": user_msg}]
     )
 
@@ -116,26 +221,17 @@ def chat():
         if actual_model:
             yield f"[[MODEL::{actual_model}]]"
 
-        state["history"].append({"role": "user", "content": user_msg})
-        state["history"].append({"role": "assistant", "content": reply})
-        state["history"] = state["history"][-6:]
-        state["num_turns"] += 1
-        state["total_tokens"] += count_tokens(user_msg, model) + count_tokens(reply, model)
-        state["total_cost"] += estimate_cost(user_msg, reply, model)["total_cost"]
+        conv["history"].append({"role": "user", "content": user_msg})
+        conv["history"].append({"role": "assistant", "content": reply})
+        conv["history"] = conv["history"][-6:]
+        conv["num_turns"] += 1
+        conv["total_tokens"] += count_tokens(user_msg, model) + count_tokens(reply, model)
+        conv["total_cost"] += estimate_cost(user_msg, reply, model)["total_cost"]
+        conv["updated_at"] = time.time()
+        if conv["title"] == NEW_CHAT_TITLE:
+            conv["title"] = user_msg[:36] + ("…" if len(user_msg) > 36 else "")
 
     return Response(generate(), mimetype="text/plain; charset=utf-8")
-
-
-@app.route("/api/stats")
-def stats():
-    state = _get_state()
-    return jsonify(
-        {
-            "num_turns": state["num_turns"],
-            "total_tokens": state["total_tokens"],
-            "total_cost": state["total_cost"],
-        }
-    )
 
 
 @app.route("/api/diag")
@@ -225,16 +321,6 @@ def diag():
         result["openai_sdk_call"] = f"FAILED: {type(e).__name__}: {e}"
 
     return jsonify(result)
-
-
-@app.route("/api/reset", methods=["POST"])
-def reset():
-    state = _get_state()
-    state["history"] = []
-    state["num_turns"] = 0
-    state["total_tokens"] = 0
-    state["total_cost"] = 0.0
-    return jsonify({"ok": True})
 
 
 if __name__ == "__main__":

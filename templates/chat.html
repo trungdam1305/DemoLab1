@@ -64,13 +64,158 @@
     color: var(--text);
     display: flex;
     justify-content: center;
+    align-items: flex-start;
     min-height: 100vh;
     padding: 28px 16px;
   }
 
-  .app {
+  .layout {
     width: 100%;
-    max-width: 760px;
+    max-width: 1080px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    position: relative;
+  }
+
+  /* ---------- Sidebar: lịch sử đoạn chat ---------- */
+  .sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 56px);
+    position: sticky;
+    top: 28px;
+    overflow: hidden;
+  }
+
+  .sidebar-header {
+    padding: 14px 14px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .new-chat-btn {
+    width: 100%;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px dashed var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 0.82rem;
+    font-family: inherit;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: transform 0.12s ease, opacity 0.12s ease;
+  }
+  .new-chat-btn:hover { opacity: 0.85; }
+  .new-chat-btn:active { transform: scale(0.98); }
+
+  .conversation-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .conversation-list::-webkit-scrollbar { width: 6px; }
+  .conversation-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+
+  .conversation-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 9px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    color: var(--text);
+  }
+  .conversation-item:hover { background: var(--panel-2); }
+  .conversation-item.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .conversation-item .title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+  }
+  .conversation-item .delete-btn {
+    opacity: 0;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 3px 6px;
+    border-radius: 6px;
+    flex-shrink: 0;
+    transition: opacity 0.12s ease;
+  }
+  .conversation-item:hover .delete-btn,
+  .conversation-item:focus-within .delete-btn { opacity: 1; }
+  .conversation-item .delete-btn:hover {
+    background: var(--danger-bg);
+    color: var(--danger-text);
+  }
+
+  .sidebar-empty {
+    padding: 16px 12px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.78rem;
+  }
+
+  .sidebar-toggle {
+    display: none;
+    width: 38px;
+    height: 38px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    box-shadow: var(--shadow-sm);
+    font-size: 1.1rem;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 12, 20, 0.4);
+    z-index: 40;
+  }
+  .sidebar-backdrop.show { display: block; }
+
+  /* ---------- Khu chat chính ---------- */
+  .app {
+    flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 14px;
@@ -88,6 +233,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
+    min-width: 0;
   }
 
   .brand-icon {
@@ -108,6 +254,9 @@
     font-weight: 700;
     margin: 0;
     letter-spacing: -0.01em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   header p {
@@ -148,7 +297,7 @@
   }
   .model-picker select option { color: #1a1d23; }
 
-  button.reset {
+  button.icon-btn {
     background: var(--panel);
     color: var(--text);
     border: 1px solid var(--border);
@@ -161,10 +310,12 @@
     align-items: center;
     gap: 6px;
     white-space: nowrap;
+    cursor: pointer;
+    font-family: inherit;
     transition: transform 0.12s ease, border-color 0.12s ease;
   }
-  button.reset:hover { border-color: var(--accent); }
-  button.reset:active { transform: scale(0.97); }
+  button.icon-btn:hover { border-color: var(--danger-text); color: var(--danger-text); }
+  button.icon-btn:active { transform: scale(0.97); }
 
   details.persona-box {
     background: var(--panel);
@@ -416,69 +567,102 @@
     gap: 8px;
   }
 
+  .bubble .katex { color: inherit; font-size: 1.02em; }
+  .bubble .katex-display { margin: 8px 0; overflow-x: auto; overflow-y: hidden; }
+
+  @media (max-width: 860px) {
+    .sidebar-toggle { display: flex; }
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 82vw;
+      max-width: 300px;
+      max-height: 100vh;
+      border-radius: 0 18px 18px 0;
+      transform: translateX(-105%);
+      transition: transform 0.2s ease;
+      z-index: 50;
+    }
+    .sidebar.open { transform: translateX(0); box-shadow: 0 0 40px rgba(0,0,0,0.35); }
+  }
+
   @media (max-width: 480px) {
     body { padding: 16px 10px; }
     .row { max-width: 94%; }
     header h1 { font-size: 1.05rem; }
   }
-
-  .bubble .katex { color: inherit; font-size: 1.02em; }
-  .bubble .katex-display { margin: 8px 0; overflow-x: auto; overflow-y: hidden; }
 </style>
 </head>
 <body>
-<div class="app">
-  <header>
-    <div class="brand">
-      <div class="brand-icon">🤖</div>
-      <div>
-        <h1>Trợ Lý CLI</h1>
-        <p>Web UI cho streaming chatbot (template.py)</p>
-      </div>
-    </div>
-    <div class="header-actions">
-      <div class="model-picker">
-        <span class="model-picker-icon">🧠</span>
-        <select id="modelSelect">
-          {% for m in models %}
-          <option value="{{ m.id }}" {% if m.id == default_model %}selected{% endif %}>{{ m.label }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <button class="reset" id="resetBtn" type="button">↺ Đặt lại</button>
-    </div>
-  </header>
+<div class="layout">
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-  <details class="persona-box">
-    <summary>
-      <span class="label">⚙️ System prompt (persona)</span>
-    </summary>
-    <textarea id="persona" rows="2">{{ default_persona }}</textarea>
-  </details>
-
-  <div class="error-banner" id="errorBanner">⚠️ <span id="errorText"></span></div>
-
-  <div class="chat-panel">
-    <div class="messages" id="messages">
-      <div class="empty-hint">
-        <span class="big-icon">💬</span>
-        <span>Gõ tin nhắn bên dưới để bắt đầu trò chuyện.</span>
-      </div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">💬 Lịch sử đoạn chat</div>
+      <button class="new-chat-btn" id="newChatBtn" type="button">+ Đoạn chat mới</button>
     </div>
-    <form class="composer" id="composer">
-      <textarea id="input" placeholder="Nhập tin nhắn... (Enter để gửi, Shift+Enter xuống dòng)" rows="1"></textarea>
-      <button class="send" id="sendBtn" type="submit" aria-label="Gửi">➤</button>
-    </form>
+    <div class="conversation-list" id="conversationList">
+      <div class="sidebar-empty">Chưa có đoạn chat nào</div>
+    </div>
+  </aside>
+
+  <div class="app">
+    <header>
+      <div class="brand">
+        <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-label="Mở lịch sử">☰</button>
+        <div class="brand-icon">🤖</div>
+        <div style="min-width:0">
+          <h1>Trợ Lý CLI</h1>
+          <p>Web UI cho streaming chatbot (template.py)</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="model-picker">
+          <span class="model-picker-icon">🧠</span>
+          <select id="modelSelect">
+            {% for m in models %}
+            <option value="{{ m.id }}" {% if m.id == default_model %}selected{% endif %}>{{ m.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button class="icon-btn" id="deleteConvBtn" type="button">🗑 Xóa đoạn chat</button>
+      </div>
+    </header>
+
+    <details class="persona-box">
+      <summary>
+        <span class="label">⚙️ System prompt (persona)</span>
+      </summary>
+      <textarea id="persona" rows="2">{{ default_persona }}</textarea>
+    </details>
+
+    <div class="error-banner" id="errorBanner">⚠️ <span id="errorText"></span></div>
+
+    <div class="chat-panel">
+      <div class="messages" id="messages">
+        <div class="empty-hint">
+          <span class="big-icon">💬</span>
+          <span>Gõ tin nhắn bên dưới để bắt đầu trò chuyện.</span>
+        </div>
+      </div>
+      <form class="composer" id="composer">
+        <textarea id="input" placeholder="Nhập tin nhắn... (Enter để gửi, Shift+Enter xuống dòng)" rows="1"></textarea>
+        <button class="send" id="sendBtn" type="submit" aria-label="Gửi">➤</button>
+      </form>
+    </div>
+
+    <footer class="stats">
+      <span>Lịch sử tối đa 3 lượt gần nhất</span>
+      <div class="stat-pills">
+        <span class="stat-pill">🔁 <strong id="statTurns">0</strong></span>
+        <span class="stat-pill">🔤 <strong id="statTokens">0</strong></span>
+        <span class="stat-pill">💵 <strong id="statCost">$0.000000</strong></span>
+      </div>
+    </footer>
   </div>
-
-  <footer class="stats">
-    <span>Lịch sử tối đa 3 lượt gần nhất</span>
-    <div class="stat-pills">
-      <span class="stat-pill">🔁 <strong id="statTurns">0</strong></span>
-      <span class="stat-pill">🔤 <strong id="statTokens">0</strong></span>
-      <span class="stat-pill">💵 <strong id="statCost">$0.000000</strong></span>
-    </div>
-  </footer>
 </div>
 
 <script>
@@ -487,19 +671,48 @@ const composer = document.getElementById("composer");
 const inputEl = document.getElementById("input");
 const sendBtn = document.getElementById("sendBtn");
 const personaEl = document.getElementById("persona");
-const resetBtn = document.getElementById("resetBtn");
+const deleteConvBtn = document.getElementById("deleteConvBtn");
 const errorBanner = document.getElementById("errorBanner");
 const errorText = document.getElementById("errorText");
 const modelSelect = document.getElementById("modelSelect");
+const conversationListEl = document.getElementById("conversationList");
+const newChatBtn = document.getElementById("newChatBtn");
+const sidebarToggle = document.getElementById("sidebarToggle");
+const sidebar = document.getElementById("sidebar");
+const sidebarBackdrop = document.getElementById("sidebarBackdrop");
 const MODEL_MARKER_RE = /\[\[MODEL::(.+?)\]\]$/;
+
+let conversations = [];
+let activeConversationId = null;
 
 function currentModel() {
   return modelSelect.value;
 }
 
+function openSidebarMobile() {
+  sidebar.classList.add("open");
+  sidebarBackdrop.classList.add("show");
+}
+function closeSidebarMobile() {
+  sidebar.classList.remove("open");
+  sidebarBackdrop.classList.remove("show");
+}
+sidebarToggle.addEventListener("click", () => {
+  sidebar.classList.contains("open") ? closeSidebarMobile() : openSidebarMobile();
+});
+sidebarBackdrop.addEventListener("click", closeSidebarMobile);
+
 function clearEmptyHint() {
   const hint = messagesEl.querySelector(".empty-hint");
   if (hint) hint.remove();
+}
+
+function showEmptyHint() {
+  messagesEl.innerHTML = `
+    <div class="empty-hint">
+      <span class="big-icon">💬</span>
+      <span>Gõ tin nhắn bên dưới để bắt đầu trò chuyện.</span>
+    </div>`;
 }
 
 function addRow(role, text) {
@@ -548,13 +761,105 @@ function hideError() {
   errorBanner.style.display = "none";
 }
 
-async function refreshStats() {
+function renderConversationList() {
+  if (!conversations.length) {
+    conversationListEl.innerHTML = '<div class="sidebar-empty">Chưa có đoạn chat nào</div>';
+    return;
+  }
+  conversationListEl.innerHTML = "";
+  for (const conv of conversations) {
+    const item = document.createElement("div");
+    item.className = "conversation-item" + (conv.id === activeConversationId ? " active" : "");
+    item.dataset.id = conv.id;
+
+    const title = document.createElement("span");
+    title.className = "title";
+    title.textContent = conv.title || "Đoạn chat mới";
+
+    const delBtn = document.createElement("button");
+    delBtn.className = "delete-btn";
+    delBtn.type = "button";
+    delBtn.textContent = "✕";
+    delBtn.title = "Xóa đoạn chat này";
+    delBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      deleteConversation(conv.id);
+    });
+
+    item.appendChild(title);
+    item.appendChild(delBtn);
+    item.addEventListener("click", () => switchConversation(conv.id));
+    conversationListEl.appendChild(item);
+  }
+}
+
+async function loadConversationList() {
+  const res = await fetch("/api/conversations");
+  const data = await res.json();
+  conversations = data.conversations;
+  return data;
+}
+
+async function switchConversation(id) {
+  const res = await fetch(`/api/conversations/${id}`);
+  if (!res.ok) return;
+  const data = await res.json();
+
+  activeConversationId = data.id;
+  personaEl.value = data.persona;
+  if ([...modelSelect.options].some((o) => o.value === data.model)) {
+    modelSelect.value = data.model;
+  }
+
+  messagesEl.innerHTML = "";
+  if (!data.history.length) {
+    showEmptyHint();
+  } else {
+    for (const m of data.history) {
+      const bubble = addRow(m.role === "user" ? "user" : "assistant", m.content);
+      if (m.role === "assistant") renderMath(bubble);
+    }
+  }
+
+  document.getElementById("statTurns").textContent = data.num_turns;
+  document.getElementById("statTokens").textContent = data.total_tokens;
+  document.getElementById("statCost").textContent = "$" + data.total_cost.toFixed(6);
+
+  hideError();
+  renderConversationList();
+  closeSidebarMobile();
+}
+
+async function createNewConversation() {
+  const res = await fetch("/api/conversations", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ persona: personaEl.value, model: currentModel() }),
+  });
+  const data = await res.json();
+  await loadConversationList();
+  await switchConversation(data.id);
+}
+
+async function deleteConversation(id) {
+  const res = await fetch(`/api/conversations/${id}`, { method: "DELETE" });
+  const data = await res.json();
+  await loadConversationList();
+  await switchConversation(data.active_id);
+}
+
+async function refreshActiveConversationMeta() {
+  if (!activeConversationId) return;
   try {
-    const res = await fetch("/api/stats");
+    const res = await fetch(`/api/conversations/${activeConversationId}`);
+    if (!res.ok) return;
     const data = await res.json();
     document.getElementById("statTurns").textContent = data.num_turns;
     document.getElementById("statTokens").textContent = data.total_tokens;
     document.getElementById("statCost").textContent = "$" + data.total_cost.toFixed(6);
+    const conv = conversations.find((c) => c.id === activeConversationId);
+    if (conv) conv.title = data.title;
+    renderConversationList();
   } catch (e) {
     // im lặng — không chặn UI vì lỗi thống kê
   }
@@ -573,7 +878,12 @@ async function sendMessage(text) {
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, persona: personaEl.value, model: currentModel() }),
+      body: JSON.stringify({
+        message: text,
+        persona: personaEl.value,
+        model: currentModel(),
+        conversation_id: activeConversationId,
+      }),
     });
 
     if (!res.ok) {
@@ -618,7 +928,7 @@ async function sendMessage(text) {
   } finally {
     assistantBubble.classList.remove("pending");
     sendBtn.disabled = false;
-    refreshStats();
+    refreshActiveConversationMeta();
   }
 }
 
@@ -643,18 +953,21 @@ inputEl.addEventListener("input", () => {
   inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + "px";
 });
 
-resetBtn.addEventListener("click", async () => {
-  await fetch("/api/reset", { method: "POST" });
-  messagesEl.innerHTML = `
-    <div class="empty-hint">
-      <span class="big-icon">💬</span>
-      <span>Gõ tin nhắn bên dưới để bắt đầu trò chuyện.</span>
-    </div>`;
-  hideError();
-  refreshStats();
+newChatBtn.addEventListener("click", createNewConversation);
+deleteConvBtn.addEventListener("click", () => {
+  if (activeConversationId) deleteConversation(activeConversationId);
 });
 
-refreshStats();
+async function init() {
+  const data = await loadConversationList();
+  activeConversationId = data.active_id;
+  renderConversationList();
+  if (activeConversationId) {
+    await switchConversation(activeConversationId);
+  }
+}
+
+init();
 </script>
 </body>
 </html>
