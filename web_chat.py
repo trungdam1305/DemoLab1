@@ -88,6 +88,7 @@ def chat():
 
     def generate():
         reply = ""
+        actual_model = None
         try:
             stream = retry_with_backoff(
                 lambda: client.chat.completions.create(
@@ -97,6 +98,8 @@ def chat():
                 )
             )
             for chunk in stream:
+                if actual_model is None and getattr(chunk, "model", None):
+                    actual_model = chunk.model
                 delta = chunk.choices[0].delta.content or ""
                 reply += delta
                 yield delta
@@ -106,6 +109,12 @@ def chat():
             # thị, thay vì trả về rỗng im lặng (dễ gặp khi model gõ sai tên).
             yield f"⚠️ Lỗi gọi API với model '{model}': {type(e).__name__}: {e}"
             return
+
+        # Marker để UI tách ra hiển thị model THẬT mà OpenAI đã dùng để trả
+        # lời (đáng tin hơn nhiều so với việc hỏi model "bạn là ai" — model
+        # tự nhận diện sai là chuyện thường gặp).
+        if actual_model:
+            yield f"[[MODEL::{actual_model}]]"
 
         state["history"].append({"role": "user", "content": user_msg})
         state["history"].append({"role": "assistant", "content": reply})
