@@ -23,6 +23,18 @@ DEFAULT_PERSONA = (
     "Bạn là trợ giảng thân thiện của khóa AI, trả lời ngắn gọn bằng tiếng Việt."
 )
 
+# Danh sách model cho dropdown lựa chọn trên UI. "id" phải khớp đúng tên
+# model thật của nhà cung cấp (OpenAI hoặc endpoint tương thích qua
+# OPENAI_BASE_URL) — nếu gõ sai tên, API sẽ báo lỗi rõ ràng khi gửi tin nhắn.
+AVAILABLE_MODELS = [
+    {"id": "gpt-5", "label": "GPT-5"},
+    {"id": "gpt-5-mini", "label": "GPT-5 mini"},
+    {"id": "gpt-4.1", "label": "GPT-4.1"},
+    {"id": "gpt-4.1-mini", "label": "GPT-4.1 mini"},
+    {"id": "gpt-4o", "label": "GPT-4o"},
+    {"id": "gpt-4o-mini", "label": "GPT-4o mini"},
+]
+
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
 
@@ -46,7 +58,12 @@ def _get_state() -> dict:
 
 @app.route("/")
 def index():
-    return render_template("chat.html", default_persona=DEFAULT_PERSONA)
+    return render_template(
+        "chat.html",
+        default_persona=DEFAULT_PERSONA,
+        models=AVAILABLE_MODELS,
+        default_model=OPENAI_MODEL,
+    )
 
 
 @app.route("/api/chat", methods=["POST"])
@@ -54,6 +71,7 @@ def chat():
     data = request.get_json(force=True) or {}
     user_msg = (data.get("message") or "").strip()
     persona = (data.get("persona") or DEFAULT_PERSONA).strip()
+    model = (data.get("model") or OPENAI_MODEL).strip()
     if not user_msg:
         return jsonify({"error": "Tin nhắn rỗng"}), 400
 
@@ -70,24 +88,31 @@ def chat():
 
     def generate():
         reply = ""
-        stream = retry_with_backoff(
-            lambda: client.chat.completions.create(
-                model=OPENAI_MODEL,
-                messages=messages,
-                stream=True,
+        try:
+            stream = retry_with_backoff(
+                lambda: client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    stream=True,
+                )
             )
-        )
-        for chunk in stream:
-            delta = chunk.choices[0].delta.content or ""
-            reply += delta
-            yield delta
+            for chunk in stream:
+                delta = chunk.choices[0].delta.content or ""
+                reply += delta
+                yield delta
+        except Exception as e:
+            # Response đã bắt đầu stream với status 200 nên không thể đổi
+            # sang mã lỗi HTTP nữa — báo lỗi ngay trong nội dung để UI hiển
+            # thị, thay vì trả về rỗng im lặng (dễ gặp khi model gõ sai tên).
+            yield f"⚠️ Lỗi gọi API với model '{model}': {type(e).__name__}: {e}"
+            return
 
         state["history"].append({"role": "user", "content": user_msg})
         state["history"].append({"role": "assistant", "content": reply})
         state["history"] = state["history"][-6:]
         state["num_turns"] += 1
-        state["total_tokens"] += count_tokens(user_msg) + count_tokens(reply)
-        state["total_cost"] += estimate_cost(user_msg, reply)["total_cost"]
+        state["total_tokens"] += count_tokens(user_msg, model) + count_tokens(reply, model)
+        state["total_cost"] += estimate_cost(user_msg, reply, model)["total_cost"]
 
     return Response(generate(), mimetype="text/plain; charset=utf-8")
 

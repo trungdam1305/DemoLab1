@@ -80,6 +80,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: 12px;
   }
 
@@ -113,6 +114,53 @@
     margin: 2px 0 0;
     color: var(--muted);
     font-size: 0.8rem;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .model-picker {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow-sm);
+    padding: 0 10px 0 12px;
+  }
+  .model-picker-icon { font-size: 0.9rem; }
+  .model-picker select {
+    border: none;
+    background: transparent;
+    color: var(--text);
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-family: inherit;
+    padding: 8px 4px;
+    outline: none;
+    cursor: pointer;
+  }
+  .model-picker select option { color: #1a1d23; }
+
+  .custom-model-input {
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 9px 14px;
+    font-family: inherit;
+    font-size: 0.85rem;
+    outline: none;
+  }
+  .custom-model-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
   }
 
   button.reset {
@@ -396,8 +444,21 @@
         <p>Web UI cho streaming chatbot (template.py)</p>
       </div>
     </div>
-    <button class="reset" id="resetBtn" type="button">↺ Đặt lại</button>
+    <div class="header-actions">
+      <div class="model-picker">
+        <span class="model-picker-icon">🧠</span>
+        <select id="modelSelect">
+          {% for m in models %}
+          <option value="{{ m.id }}" {% if m.id == default_model %}selected{% endif %}>{{ m.label }}</option>
+          {% endfor %}
+          <option value="__custom__">Khác (nhập tay)...</option>
+        </select>
+      </div>
+      <button class="reset" id="resetBtn" type="button">↺ Đặt lại</button>
+    </div>
   </header>
+
+  <input type="text" id="customModel" class="custom-model-input" placeholder="Nhập tên model, ví dụ: gpt-4o-2024-08-06" hidden>
 
   <details class="persona-box">
     <summary>
@@ -440,6 +501,21 @@ const personaEl = document.getElementById("persona");
 const resetBtn = document.getElementById("resetBtn");
 const errorBanner = document.getElementById("errorBanner");
 const errorText = document.getElementById("errorText");
+const modelSelect = document.getElementById("modelSelect");
+const customModelInput = document.getElementById("customModel");
+
+function currentModel() {
+  if (modelSelect.value === "__custom__") {
+    return customModelInput.value.trim() || modelSelect.options[0].value;
+  }
+  return modelSelect.value;
+}
+
+modelSelect.addEventListener("change", () => {
+  const isCustom = modelSelect.value === "__custom__";
+  customModelInput.hidden = !isCustom;
+  if (isCustom) customModelInput.focus();
+});
 
 function clearEmptyHint() {
   const hint = messagesEl.querySelector(".empty-hint");
@@ -517,7 +593,7 @@ async function sendMessage(text) {
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, persona: personaEl.value }),
+      body: JSON.stringify({ message: text, persona: personaEl.value, model: currentModel() }),
     });
 
     if (!res.ok) {
