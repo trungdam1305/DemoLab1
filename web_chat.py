@@ -13,6 +13,7 @@ Rồi mở http://127.0.0.1:5000 trên trình duyệt.
 
 import os
 import secrets
+import socket
 
 from flask import Flask, Response, jsonify, render_template, request, session
 
@@ -103,6 +104,67 @@ def stats():
     )
 
 
+@app.route("/api/diag")
+def diag():
+    """Chẩn đoán cấu hình + kết nối mạng — dùng khi không có quyền truy cập Shell."""
+    key = os.getenv("OPENAI_API_KEY")
+    if key:
+        key_info = f"len={len(key)}, prefix={key[:6]!r}, suffix={key[-4:]!r}"
+    else:
+        key_info = "KHÔNG được set"
+
+    base_url = os.getenv("OPENAI_BASE_URL") or "(mặc định: api.openai.com)"
+    host = "api.openai.com"
+    if os.getenv("OPENAI_BASE_URL"):
+        from urllib.parse import urlparse
+
+        host = urlparse(os.getenv("OPENAI_BASE_URL")).hostname or host
+
+    result = {
+        "openai_api_key": key_info,
+        "openai_base_url": base_url,
+        "resolved_host": host,
+    }
+
+    try:
+        ip = socket.gethostbyname(host)
+        result["dns_resolve"] = f"OK -> {ip}"
+    except Exception as e:
+        result["dns_resolve"] = f"FAILED: {e}"
+        return jsonify(result)
+
+    try:
+        with socket.create_connection((host, 443), timeout=5):
+            result["tcp_connect_443"] = "OK"
+    except Exception as e:
+        result["tcp_connect_443"] = f"FAILED: {e}"
+        return jsonify(result)
+
+    try:
+        import urllib.error
+        import urllib.request
+
+        req = urllib.request.Request(
+            f"https://{host}/v1/models",
+            headers={"Authorization": f"Bearer {key}"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                result["https_request"] = f"HTTP {resp.status}"
+                result["https_body_snippet"] = resp.read(300).decode(
+                    "utf-8", errors="replace"
+                )
+        except urllib.error.HTTPError as e:
+            result["https_request"] = f"HTTP {e.code}"
+            result["https_body_snippet"] = e.read(300).decode(
+                "utf-8", errors="replace"
+            )
+    except Exception as e:
+        result["https_request"] = f"FAILED: {type(e).__name__}: {e}"
+
+    return jsonify(result)
+
+
 @app.route("/api/reset", methods=["POST"])
 def reset():
     state = _get_state()
@@ -114,6 +176,4 @@ def reset():
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
-    app.run(host="0.0.0.0", port=port, debug=debug)
+    app.run(debug=True, port=5000)
