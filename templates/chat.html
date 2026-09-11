@@ -7,6 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
 <style>
   :root {
     --bg: #eef1f6;
@@ -378,6 +381,9 @@
     .row { max-width: 94%; }
     header h1 { font-size: 1.05rem; }
   }
+
+  .bubble .katex { color: inherit; font-size: 1.02em; }
+  .bubble .katex-display { margin: 8px 0; overflow-x: auto; overflow-y: hidden; }
 </style>
 </head>
 <body>
@@ -460,6 +466,23 @@ function addRow(role, text) {
   return bubble;
 }
 
+function renderMath(el) {
+  if (typeof renderMathInElement !== "function") return;
+  try {
+    renderMathInElement(el, {
+      delimiters: [
+        { left: "$$", right: "$$", display: true },
+        { left: "\\[", right: "\\]", display: true },
+        { left: "\\(", right: "\\)", display: false },
+        { left: "$", right: "$", display: false },
+      ],
+      throwOnError: false,
+    });
+  } catch (e) {
+    // công thức lỗi cú pháp — giữ nguyên text thô, không chặn UI
+  }
+}
+
 function showError(msg) {
   errorText.textContent = msg;
   errorBanner.style.display = "flex";
@@ -517,6 +540,8 @@ async function sendMessage(text) {
       assistantBubble.textContent = full;
       messagesEl.scrollTop = messagesEl.scrollHeight;
     }
+    renderMath(assistantBubble);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
   } catch (err) {
     assistantBubble.innerHTML = "";
     showError("Không gọi được API: " + err.message);
