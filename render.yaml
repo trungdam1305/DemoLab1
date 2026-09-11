@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: demolab1-chat
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn web_chat:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: FLASK_DEBUG
+        value: "false"
